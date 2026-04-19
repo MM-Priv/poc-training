@@ -17,3 +17,7 @@ wheels/
 
 # Environment
 .envrc
+
+# Runtime artifacts
+cluster-validator/logs/
+cluster-validator/results/

@@ -1,0 +1,4 @@
+# Additional packages on top of nvcr.io/nvidia/pytorch:25.01-py3
+# (which already provides torch, torchvision, CUDA, NCCL)
+transformers
+accelerate
