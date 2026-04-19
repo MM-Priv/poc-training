@@ -1,0 +1,74 @@
+{
+  "check": "infiniband",
+  "node": "worker-0",
+  "status": "PASS",
+  "metrics": {
+    "ports": [
+      {
+        "ca": "mlx5_0",
+        "port": 1,
+        "state": "Active",
+        "physical_state": "LinkUp",
+        "rate": "400",
+        "status": "PASS"
+      },
+      {
+        "ca": "mlx5_1",
+        "port": 1,
+        "state": "Active",
+        "physical_state": "LinkUp",
+        "rate": "400",
+        "status": "PASS"
+      },
+      {
+        "ca": "mlx5_2",
+        "port": 1,
+        "state": "Active",
+        "physical_state": "LinkUp",
+        "rate": "400",
+        "status": "PASS"
+      },
+      {
+        "ca": "mlx5_3",
+        "port": 1,
+        "state": "Active",
+        "physical_state": "LinkUp",
+        "rate": "400",
+        "status": "PASS"
+      },
+      {
+        "ca": "mlx5_4",
+        "port": 1,
+        "state": "Active",
+        "physical_state": "LinkUp",
+        "rate": "400",
+        "status": "PASS"
+      },
+      {
+        "ca": "mlx5_5",
+        "port": 1,
+        "state": "Active",
+        "physical_state": "LinkUp",
+        "rate": "400",
+        "status": "PASS"
+      },
+      {
+        "ca": "mlx5_6",
+        "port": 1,
+        "state": "Active",
+        "physical_state": "LinkUp",
+        "rate": "400",
+        "status": "PASS"
+      },
+      {
+        "ca": "mlx5_7",
+        "port": 1,
+        "state": "Active",
+        "physical_state": "LinkUp",
+        "rate": "400",
+        "status": "PASS"
+      }
+    ]
+  },
+  "messages": []
+}

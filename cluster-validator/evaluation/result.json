@@ -1,0 +1,354 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-04-19T09:57:04.062252+00:00",
+  "cluster": {
+    "nodes": 2,
+    "gpus_per_node": 8,
+    "total_gpus": 16
+  },
+  "overall_status": "PASS",
+  "checks": {
+    "gpu_health": {
+      "label": "GPU Health",
+      "status": "PASS",
+      "metrics": {
+        "gpu_count": 16,
+        "gpus": [
+          {
+            "index": 0,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "33",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 1,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "27",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 2,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "29",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 3,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "28",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 4,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "29",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 5,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "27",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 6,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "28",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 7,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "26",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 0,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "29",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 1,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "27",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 2,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "29",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 3,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "28",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 4,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "29",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 5,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "28",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 6,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "29",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          },
+          {
+            "index": 7,
+            "name": "NVIDIA H200",
+            "memory": "143771 MiB",
+            "temperature_c": "27",
+            "ecc_uncorrectable": "0",
+            "status": "PASS"
+          }
+        ]
+      },
+      "messages": [],
+      "nodes": [
+        "worker-0",
+        "worker-1"
+      ]
+    },
+    "nccl_allreduce": {
+      "label": "NCCL All-Reduce Bandwidth",
+      "status": "PASS",
+      "metrics": {
+        "avg_bus_bw_GBs": 299.146,
+        "peak_bus_bw_GBs": 300.98,
+        "threshold_GBs": 200.0
+      },
+      "messages": [],
+      "nodes": []
+    },
+    "infiniband": {
+      "label": "InfiniBand Link Health",
+      "status": "PASS",
+      "metrics": {
+        "ports": [
+          {
+            "ca": "mlx5_0",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_1",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_2",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_3",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_4",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_5",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_6",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_7",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_0",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_1",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_2",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_3",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_4",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_5",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_6",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          },
+          {
+            "ca": "mlx5_7",
+            "port": 1,
+            "state": "Active",
+            "physical_state": "LinkUp",
+            "rate": "400",
+            "status": "PASS"
+          }
+        ]
+      },
+      "messages": [],
+      "nodes": [
+        "worker-0",
+        "worker-1"
+      ]
+    },
+    "network_bandwidth": {
+      "label": "Node-to-Node Network Bandwidth",
+      "status": "PASS",
+      "metrics": {
+        "bandwidth_Gbits": 80.66,
+        "threshold_Gbits": 10,
+        "parallel_streams": 8,
+        "duration_s": 10,
+        "server_ip": "10.26.67.231",
+        "client_node": "worker-1"
+      },
+      "messages": [],
+      "nodes": []
+    },
+    "synthetic_training": {
+      "label": "Synthetic Distributed Training",
+      "status": "PASS",
+      "metrics": {
+        "world_size": 16,
+        "model_params_M": 137,
+        "batch_size": 2,
+        "seq_len": 1024,
+        "train_tokens_per_sec_total": 258262,
+        "train_tokens_per_sec_per_gpu": 16141,
+        "infer_tokens_per_sec_total": 3181640,
+        "infer_tokens_per_sec_per_gpu": 198853,
+        "peak_memory_per_rank_GiB": 3.79,
+        "threshold_train_tok_per_sec_per_gpu": 2000
+      },
+      "messages": [],
+      "nodes": []
+    },
+    "storage_io": {
+      "label": "Storage I/O Throughput",
+      "status": "PASS",
+      "metrics": {
+        "path": "/mnt/data",
+        "test_size_MB": 2048,
+        "write_MBs": 623,
+        "read_MBs": 821,
+        "write_threshold_MBs": 300,
+        "read_threshold_MBs": 500
+      },
+      "messages": [],
+      "nodes": [
+        "worker-0"
+      ]
+    }
+  }
+}

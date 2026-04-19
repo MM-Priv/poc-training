@@ -1,0 +1,13 @@
+{
+  "check": "network_bandwidth",
+  "status": "PASS",
+  "metrics": {
+    "bandwidth_Gbits": 80.66,
+    "threshold_Gbits": 10,
+    "parallel_streams": 8,
+    "duration_s": 10,
+    "server_ip": "10.26.67.231",
+    "client_node": "worker-1"
+  },
+  "messages": [""]
+}

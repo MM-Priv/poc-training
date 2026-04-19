@@ -1,0 +1,17 @@
+{
+  "check": "synthetic_training",
+  "status": "PASS",
+  "metrics": {
+    "world_size": 16,
+    "model_params_M": 137,
+    "batch_size": 2,
+    "seq_len": 1024,
+    "train_tokens_per_sec_total": 258262,
+    "train_tokens_per_sec_per_gpu": 16141,
+    "infer_tokens_per_sec_total": 3181640,
+    "infer_tokens_per_sec_per_gpu": 198853,
+    "peak_memory_per_rank_GiB": 3.79,
+    "threshold_train_tok_per_sec_per_gpu": 2000
+  },
+  "messages": []
+}

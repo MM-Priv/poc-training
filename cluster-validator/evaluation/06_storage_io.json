@@ -1,0 +1,14 @@
+{
+  "check": "storage_io",
+  "node": "worker-0",
+  "status": "PASS",
+  "metrics": {
+    "path": "/mnt/data",
+    "test_size_MB": 2048,
+    "write_MBs": 623,
+    "read_MBs": 821,
+    "write_threshold_MBs": 300,
+    "read_threshold_MBs":  500
+  },
+  "messages": []
+}

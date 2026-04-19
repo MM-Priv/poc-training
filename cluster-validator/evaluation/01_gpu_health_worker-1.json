@@ -1,0 +1,75 @@
+{
+  "check": "gpu_health",
+  "node": "worker-1",
+  "status": "PASS",
+  "metrics": {
+    "gpu_count": 8,
+    "gpus": [
+      {
+        "index": 0,
+        "name": "NVIDIA H200",
+        "memory": "143771 MiB",
+        "temperature_c": "29",
+        "ecc_uncorrectable": "0",
+        "status": "PASS"
+      },
+      {
+        "index": 1,
+        "name": "NVIDIA H200",
+        "memory": "143771 MiB",
+        "temperature_c": "27",
+        "ecc_uncorrectable": "0",
+        "status": "PASS"
+      },
+      {
+        "index": 2,
+        "name": "NVIDIA H200",
+        "memory": "143771 MiB",
+        "temperature_c": "29",
+        "ecc_uncorrectable": "0",
+        "status": "PASS"
+      },
+      {
+        "index": 3,
+        "name": "NVIDIA H200",
+        "memory": "143771 MiB",
+        "temperature_c": "28",
+        "ecc_uncorrectable": "0",
+        "status": "PASS"
+      },
+      {
+        "index": 4,
+        "name": "NVIDIA H200",
+        "memory": "143771 MiB",
+        "temperature_c": "29",
+        "ecc_uncorrectable": "0",
+        "status": "PASS"
+      },
+      {
+        "index": 5,
+        "name": "NVIDIA H200",
+        "memory": "143771 MiB",
+        "temperature_c": "28",
+        "ecc_uncorrectable": "0",
+        "status": "PASS"
+      },
+      {
+        "index": 6,
+        "name": "NVIDIA H200",
+        "memory": "143771 MiB",
+        "temperature_c": "29",
+        "ecc_uncorrectable": "0",
+        "status": "PASS"
+      },
+      {
+        "index": 7,
+        "name": "NVIDIA H200",
+        "memory": "143771 MiB",
+        "temperature_c": "27",
+        "ecc_uncorrectable": "0",
+        "status": "PASS"
+      }
+    ]
+  },
+  "messages": []
+}

@@ -1,0 +1,12 @@
+{
+  "check": "nccl_allreduce",
+  "status": "PASS",
+  "metrics": {
+    "avg_bus_bw_GBs": 299.146,
+    "peak_bus_bw_GBs": 300.98,
+    "threshold_GBs": 200.0
+  },
+  "messages": [
+    ""
+  ]
+}
