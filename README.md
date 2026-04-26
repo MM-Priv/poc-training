@@ -1,4 +1,4 @@
-# Multi-node LLM training PoC — Nebius H200 cluster
+# Multi-node LLM training PoC
 
 ## Repo layout
 
