@@ -1,0 +1,375 @@
+[
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 4.61,
+    "peak_memory_gib": 10.46,
+    "mean_tflops_per_gpu": 45.62,
+    "mean_tokens_per_sec_per_gpu": 111.0,
+    "experiment": "exp2_tp8",
+    "algorithm": "Tensor Parallel (TP=8, dp_shard=2)",
+    "model_flavor": "8B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 2,
+      "tp": 8,
+      "pp": 1
+    },
+    "job_id": "233"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 16.25,
+    "peak_memory_gib": 71.59,
+    "mean_tflops_per_gpu": 160.7,
+    "mean_tokens_per_sec_per_gpu": 45.0,
+    "experiment": "exp2_tp8_70b",
+    "algorithm": "Tensor Parallel (TP=8, dp_shard=2)",
+    "model_flavor": "70B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 2,
+      "tp": 8,
+      "pp": 1
+    },
+    "job_id": "238"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 31.02,
+    "peak_memory_gib": 77.15,
+    "mean_tflops_per_gpu": 306.74,
+    "mean_tokens_per_sec_per_gpu": 85.0,
+    "experiment": "exp2_tp8_70b_bs4",
+    "algorithm": "Tensor Parallel (TP=8, dp_shard=2)",
+    "model_flavor": "70B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 2,
+      "tp": 8,
+      "pp": 1
+    },
+    "job_id": "250"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 1.86,
+    "peak_memory_gib": 9.57,
+    "mean_tflops_per_gpu": 18.39,
+    "mean_tokens_per_sec_per_gpu": 22.0,
+    "experiment": "exp3_tp8_pp2",
+    "algorithm": "Tensor + Pipeline Parallel (TP=8, PP=2, DP=1)",
+    "model_flavor": "8B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 1,
+      "tp": 8,
+      "pp": 2
+    },
+    "job_id": "234"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 2.22,
+    "peak_memory_gib": 69.9,
+    "mean_tflops_per_gpu": 21.94,
+    "mean_tokens_per_sec_per_gpu": 3.0,
+    "experiment": "exp3_tp8_pp2_70b",
+    "algorithm": "Tensor + Pipeline Parallel (TP=8, PP=2, DP=1)",
+    "model_flavor": "70B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 1,
+      "tp": 8,
+      "pp": 2
+    },
+    "job_id": "239"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 2.94,
+    "peak_memory_gib": 70.06,
+    "mean_tflops_per_gpu": 29.06,
+    "mean_tokens_per_sec_per_gpu": 4.0,
+    "experiment": "exp3_tp8_pp2_70b_mb8",
+    "algorithm": "Tensor + Pipeline Parallel (TP=8, PP=2, DP=1)",
+    "model_flavor": "70B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 1,
+      "tp": 8,
+      "pp": 2
+    },
+    "job_id": "246"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 36.61,
+    "peak_memory_gib": 20.34,
+    "mean_tflops_per_gpu": 362.03,
+    "mean_tokens_per_sec_per_gpu": 7034.0,
+    "experiment": "exp4a_fsdp_full",
+    "algorithm": "FSDP FULL_SHARD (ZeRO-3)",
+    "model_flavor": "8B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 16,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "default"
+    },
+    "job_id": "235"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 43.71,
+    "peak_memory_gib": 42.18,
+    "mean_tflops_per_gpu": 432.28,
+    "mean_tokens_per_sec_per_gpu": 8399.0,
+    "experiment": "exp4a_fsdp_full",
+    "algorithm": "FSDP FULL_SHARD (ZeRO-3)",
+    "model_flavor": "8B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 16,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "default"
+    },
+    "job_id": "247"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 40.24,
+    "peak_memory_gib": 90.85,
+    "mean_tflops_per_gpu": 397.99,
+    "mean_tokens_per_sec_per_gpu": 886.0,
+    "experiment": "exp4a_fsdp_full_70b",
+    "algorithm": "FSDP FULL_SHARD (ZeRO-3)",
+    "model_flavor": "70B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 16,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "default"
+    },
+    "job_id": "240"
+  },
+  {
+    "completed": false,
+    "n_steps": 0,
+    "experiment": "exp4a_fsdp_full_70b_fp8",
+    "algorithm": "FSDP FULL_SHARD (ZeRO-3) + torch.compile + Float8",
+    "model_flavor": "70B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 16,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "default"
+    },
+    "job_id": "245"
+  },
+  {
+    "completed": false,
+    "n_steps": 0,
+    "experiment": "exp4a_fsdp_full_70b_fp8",
+    "algorithm": "FSDP FULL_SHARD (ZeRO-3) + torch.compile + Float8",
+    "model_flavor": "70B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 16,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "default"
+    },
+    "job_id": "252"
+  },
+  {
+    "completed": false,
+    "n_steps": 0,
+    "experiment": "exp4a_fsdp_full_70b_fp8",
+    "algorithm": "FSDP FULL_SHARD (ZeRO-3) + torch.compile + Float8",
+    "model_flavor": "70B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 16,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "default"
+    },
+    "job_id": "253"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 63.39,
+    "peak_memory_gib": 89.32,
+    "mean_tflops_per_gpu": 626.97,
+    "mean_tokens_per_sec_per_gpu": 1396.0,
+    "experiment": "exp4a_fsdp_full_70b_fp8",
+    "algorithm": "FSDP FULL_SHARD (ZeRO-3) + torch.compile + Float8",
+    "model_flavor": "70B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 16,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "default"
+    },
+    "job_id": "254"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 36.35,
+    "peak_memory_gib": 27.71,
+    "mean_tflops_per_gpu": 359.51,
+    "mean_tokens_per_sec_per_gpu": 6984.0,
+    "experiment": "exp4b_fsdp_hybrid",
+    "algorithm": "FSDP HYBRID_SHARD (shard within node, replicate across)",
+    "model_flavor": "8B",
+    "parallelism": {
+      "dp_replicate": 2,
+      "dp_shard": 8,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "default"
+    },
+    "job_id": "236"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 43.56,
+    "peak_memory_gib": 53.68,
+    "mean_tflops_per_gpu": 430.81,
+    "mean_tokens_per_sec_per_gpu": 8370.0,
+    "experiment": "exp4b_fsdp_hybrid",
+    "algorithm": "FSDP HYBRID_SHARD (shard within node, replicate across)",
+    "model_flavor": "8B",
+    "parallelism": {
+      "dp_replicate": 2,
+      "dp_shard": 8,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "default"
+    },
+    "job_id": "248"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 1,
+    "final_step": 1,
+    "mean_mfu_pct": 14.6,
+    "peak_memory_gib": 137.41,
+    "mean_tflops_per_gpu": 144.36,
+    "mean_tokens_per_sec_per_gpu": 321.0,
+    "experiment": "exp4b_fsdp_hybrid_70b",
+    "algorithm": "FSDP HYBRID_SHARD (shard within node, replicate across)",
+    "model_flavor": "70B",
+    "parallelism": {
+      "dp_replicate": 2,
+      "dp_shard": 8,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "default"
+    },
+    "job_id": "241"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 38.9,
+    "peak_memory_gib": 33.88,
+    "mean_tflops_per_gpu": 384.77,
+    "mean_tokens_per_sec_per_gpu": 7475.0,
+    "experiment": "exp4c_fsdp_sgo",
+    "algorithm": "FSDP SHARD_GRAD_OP (ZeRO-2, reshard_after_forward=never)",
+    "model_flavor": "8B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 16,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "never"
+    },
+    "job_id": "237"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 6,
+    "final_step": 50,
+    "mean_mfu_pct": 44.55,
+    "peak_memory_gib": 54.9,
+    "mean_tflops_per_gpu": 440.54,
+    "mean_tokens_per_sec_per_gpu": 8559.0,
+    "experiment": "exp4c_fsdp_sgo",
+    "algorithm": "FSDP SHARD_GRAD_OP (ZeRO-2, reshard_after_forward=never)",
+    "model_flavor": "8B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 16,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "never"
+    },
+    "job_id": "249"
+  },
+  {
+    "completed": false,
+    "n_steps": 0,
+    "experiment": "exp4c_fsdp_sgo_70b",
+    "algorithm": "FSDP SHARD_GRAD_OP (ZeRO-2, reshard_after_forward=never)",
+    "model_flavor": "70B",
+    "parallelism": {
+      "dp_replicate": 1,
+      "dp_shard": 16,
+      "tp": 1,
+      "pp": 1,
+      "reshard_after_forward": "never"
+    },
+    "job_id": "242"
+  },
+  {
+    "completed": true,
+    "n_steps_logged": 5,
+    "final_step": 50,
+    "mean_mfu_pct": 47.96,
+    "peak_memory_gib": 83.7,
+    "mean_tflops_per_gpu": 474.35,
+    "mean_tokens_per_sec_per_gpu": 7906.0,
+    "experiment": "exp1_ddp",
+    "algorithm": "DDP (raw PyTorch, train.py)",
+    "model_flavor": "8B",
+    "parallelism": {
+      "dp_replicate": 16,
+      "dp_shard": 1,
+      "tp": 1,
+      "pp": 1
+    },
+    "job_id": "232"
+  }
+]

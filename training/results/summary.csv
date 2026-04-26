@@ -1,0 +1,21 @@
+experiment,model_flavor,algorithm,job_id,mean_mfu_pct,peak_memory_gib,mean_tflops_per_gpu,mean_tokens_per_sec_per_gpu,completed
+exp2_tp8,8B,"Tensor Parallel (TP=8, dp_shard=2)",233,4.61,10.46,45.62,111.0,True
+exp2_tp8_70b,70B,"Tensor Parallel (TP=8, dp_shard=2)",238,16.25,71.59,160.7,45.0,True
+exp2_tp8_70b_bs4,70B,"Tensor Parallel (TP=8, dp_shard=2)",250,31.02,77.15,306.74,85.0,True
+exp3_tp8_pp2,8B,"Tensor + Pipeline Parallel (TP=8, PP=2, DP=1)",234,1.86,9.57,18.39,22.0,True
+exp3_tp8_pp2_70b,70B,"Tensor + Pipeline Parallel (TP=8, PP=2, DP=1)",239,2.22,69.9,21.94,3.0,True
+exp3_tp8_pp2_70b_mb8,70B,"Tensor + Pipeline Parallel (TP=8, PP=2, DP=1)",246,2.94,70.06,29.06,4.0,True
+exp4a_fsdp_full,8B,FSDP FULL_SHARD (ZeRO-3),235,36.61,20.34,362.03,7034.0,True
+exp4a_fsdp_full,8B,FSDP FULL_SHARD (ZeRO-3),247,43.71,42.18,432.28,8399.0,True
+exp4a_fsdp_full_70b,70B,FSDP FULL_SHARD (ZeRO-3),240,40.24,90.85,397.99,886.0,True
+exp4a_fsdp_full_70b_fp8,70B,FSDP FULL_SHARD (ZeRO-3) + torch.compile + Float8,245,,,,,False
+exp4a_fsdp_full_70b_fp8,70B,FSDP FULL_SHARD (ZeRO-3) + torch.compile + Float8,252,,,,,False
+exp4a_fsdp_full_70b_fp8,70B,FSDP FULL_SHARD (ZeRO-3) + torch.compile + Float8,253,,,,,False
+exp4a_fsdp_full_70b_fp8,70B,FSDP FULL_SHARD (ZeRO-3) + torch.compile + Float8,254,63.39,89.32,626.97,1396.0,True
+exp4b_fsdp_hybrid,8B,"FSDP HYBRID_SHARD (shard within node, replicate across)",236,36.35,27.71,359.51,6984.0,True
+exp4b_fsdp_hybrid,8B,"FSDP HYBRID_SHARD (shard within node, replicate across)",248,43.56,53.68,430.81,8370.0,True
+exp4b_fsdp_hybrid_70b,70B,"FSDP HYBRID_SHARD (shard within node, replicate across)",241,14.6,137.41,144.36,321.0,True
+exp4c_fsdp_sgo,8B,"FSDP SHARD_GRAD_OP (ZeRO-2, reshard_after_forward=never)",237,38.9,33.88,384.77,7475.0,True
+exp4c_fsdp_sgo,8B,"FSDP SHARD_GRAD_OP (ZeRO-2, reshard_after_forward=never)",249,44.55,54.9,440.54,8559.0,True
+exp4c_fsdp_sgo_70b,70B,"FSDP SHARD_GRAD_OP (ZeRO-2, reshard_after_forward=never)",242,,,,,False
+exp1_ddp,8B,"DDP (raw PyTorch, train.py)",232,47.96,83.7,474.35,7906.0,True
