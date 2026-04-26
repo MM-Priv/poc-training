@@ -1,0 +1,53 @@
+# TorchTitan base config — Llama 3.1 8B on 2 nodes × 8 H200 = 16 GPUs.
+# Used for systematic comparison of all parallelism strategies before
+# scaling selected winners to 70B. Per-experiment parallelism is overridden
+# via --parallelism.* CLI flags in training/slurm/exp2..exp4c sbatch files.
+
+[job]
+dump_folder = "/mnt/data/poc-training/training/results/torchtitan"
+description = "Llama 3.1 8B PoC"
+
+[profiling]
+enable_profiling = false
+
+[metrics]
+log_freq = 10
+enable_tensorboard = true
+save_tb_folder = "tb"
+
+[model]
+name = "llama3"
+flavor = "8B"
+hf_assets_path = "/mnt/data/poc-training/assets/hf/llama-3.1-tokenizer"
+
+[optimizer]
+name = "AdamW"
+lr = 3.0e-4
+eps = 1e-8
+
+[lr_scheduler]
+warmup_steps = 12
+
+[training]
+local_batch_size = 1
+seq_len = 4096
+max_norm = 1.0
+steps = 50
+dataset = "fineweb_edu"  # registered in training/titan_launcher.py (local hf_cache, non-streaming)
+
+[parallelism]
+# Defaults; each sbatch overrides these on the CLI.
+data_parallel_replicate_degree = 1
+data_parallel_shard_degree = -1
+tensor_parallel_degree = 1
+pipeline_parallel_degree = 1
+context_parallel_degree = 1
+
+[checkpoint]
+enable = false
+
+[activation_checkpoint]
+mode = "full"
+
+[compile]
+enable = false

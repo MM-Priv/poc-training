@@ -1,0 +1,37 @@
+# Experiment 1: DDP baseline — Llama 3.1 8B, 16 GPUs
+#
+# Purpose: establish throughput baseline and document the DDP memory wall —
+# Llama 3.1 70B alone needs ~140 GB of BF16 params, exceeding H200's 141 GB
+# even before grads/optimizer/activations. Motivates FSDP at 70B+.
+#
+# Observed (fused AdamW + full activation checkpointing, MFU vs 989 TFLOPS dense BF16):
+#   ~84 GB/GPU  (BF16 params 16 + grads 16 + BF16 Adam states 32 + activations/workspace)
+#   ~48% MFU, ~8 K tok/s/GPU
+
+results_dir: /mnt/data/poc-training/training/results
+
+model:
+  seq_len: 4096
+
+data:
+  path: /mnt/data/poc-training/data
+  num_workers: 4
+
+training:
+  batch_size:          1      # per GPU; effective = 1 × 16 × 8 = 128 seqs = 524K tokens/step
+  grad_accum_steps:    8
+
+  lr:            3.0e-4
+  weight_decay:  0.1
+  grad_clip:     1.0
+
+  max_steps:     50
+  warmup_steps:  12
+
+  checkpoint_dir:      checkpoints
+  checkpoint_interval: 50            # not used (save_checkpoints=false)
+  auto_resume:         false
+  save_checkpoints:    false
+
+  val_interval: 50                   # run validation once at the end
+  log_interval: 10
