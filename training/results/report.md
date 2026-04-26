@@ -10,12 +10,13 @@ strategies. Three findings stand out:
    and FP8 enabled, 70B FSDP FULL reaches **63.4% MFU** (Model FLOPs
    Utilization) at 1,396 tok/s/GPU. The plain BF16 baseline lands at 40.2% MFU,
    so the gap between the two represents the software-optimization headroom
-   available on the same hardware.
+   available on the same hardware. (MFU is comparable across strategies
+   directionally, not strictly — see the caveat below the headline tables.)
 2. **DDP is the highest-MFU choice as long as the model fits per-GPU.** At 8B
    it reaches 48% MFU and beats every FSDP variant we measured. FSDP only
    pays off when memory forces it. At 70B, FSDP FULL_SHARD is the workhorse;
    HYBRID and SGO need shard groups too large for a 2-node topology.
-3. **For models above 100B parameters, the growth path is `TP=8 × PP=N ×
+3. **For models above 200B parameters, the growth path is `TP=8 × PP=N ×
    FSDP-DP`.** Tensor parallelism stays intra-node over NVLink, pipeline
    parallelism ships activations cheaply across InfiniBand, and FSDP shards
    whatever state is left.
@@ -68,13 +69,21 @@ figure that applies to real training). All runs use full activation
 checkpointing, BF16 mixed precision, sequence length 4096, and 50 measured
 steps after a ~12-step warmup.
 
+**A caveat on cross-strategy comparison.** MFU is comparable *directionally*
+between strategies, but not strictly equivalent: each strategy has a different
+communication pattern, different overlap of compute and collectives, and
+different effective batch semantics even at the same nominal `local_batch`.
+The numbers below are good for ranking strategies and reasoning about
+trade-offs; treat small differences as within measurement noise.
+
 ### 8B — every strategy fits per-GPU
 
 We measured each FSDP variant at two batch sizes: `local_batch=1` provides a
 fair cross-strategy baseline, and `local_batch=4` exploits the spare memory
-that 8B leaves on an H200. DDP, TP, and TP+PP were measured only at bs=1: DDP
-already saturates compute at bs=1, and TP / TP+PP at 8B are bandwidth-floor
-cases that don't benefit from larger batches.
+that 8B leaves on an H200. DDP, TP, and TP+PP were measured only at bs=1.
+DDP already saturates compute at bs=1, and TP / TP+PP at 8B are bandwidth-floor
+cases that we did not re-run at bs=4 because the interesting batch-scaling
+behaviour shows up at 70B (see next table).
 
 | # | Strategy | MFU bs=1 | MFU bs=4 | Mem (config) | tok/s/GPU (config) |
 |---|---|---|---|---|---|
@@ -97,7 +106,7 @@ cases that don't benefit from larger batches.
 | 4b | FSDP HYBRID | bs=1 | 14.6%* | 137.4 GB peak | 321* | ❌ OOM mid-run |
 | 4c | FSDP SGO | bs=1 | — | — | — | ❌ OOM at init |
 | 1 | DDP | bs=1 | — | — | — | ❌ N/A (140 GB params alone) |
-| **4a+** | **FSDP FULL + compile + FP8** | bs=1 | **63.4%** | 89.3 GB | **1,396** | ✅ tuned ceiling |
+| **4a+** | **FSDP FULL + compile + FP8** | bs=1 | **63.4%** | 89.3 GB | **1,396** | ✅ best measured |
 
 \* HYBRID values are partial-run figures captured before the OOM and are not
 directly comparable to the other rows.
@@ -134,13 +143,16 @@ zero-bubble schedules, which are still experimental in TorchTitan. The
 practical recommendation for the customer is to use TP+PP only when pipeline
 parallelism is unavoidable (200B+) and to plan for schedule tuning on top.
 
-**`torch.compile` together with FP8 is the tuned ceiling.** At 63.4% MFU on
-70B FSDP FULL, this is a 1.58× throughput improvement over the BF16 baseline
-(398 → 627 TFLOPS/GPU, 886 → 1,396 tok/s/GPU) — and at *lower* per-GPU memory,
-because FP8 weights are smaller. The number sits above TorchTitan's published
-reference of 54.5% MFU (Llama 3 70B on 64 H100s, BF16; see [TorchTitan
-paper, arXiv:2410.06511](https://arxiv.org/abs/2410.06511)) and is at the
-well-tuned ceiling for 70B on H200.
+**`torch.compile` together with FP8 is the best result we measured.** At
+63.4% MFU on 70B FSDP FULL, this is a 1.58× throughput improvement over the
+BF16 baseline (398 → 627 TFLOPS/GPU, 886 → 1,396 tok/s/GPU) — and at *lower*
+per-GPU memory, because FP8 weights are smaller. The number sits above
+TorchTitan's published reference of 54.5% MFU (Llama 3 70B on 64 H100s, BF16;
+see [TorchTitan paper, arXiv:2410.06511](https://arxiv.org/abs/2410.06511)).
+This is a local maximum under our setup (Llama 3.1 70B, seq=4096, AdamW,
+TorchTitan + `torchao` float8), not a universal ceiling — sequence length,
+optimizer choice, and the still-evolving FP8 kernel stack all leave further
+headroom.
 
 | Config | MFU | TFLOPS/GPU | tok/s/GPU | Mem/GPU |
 |---|---|---|---|---|
@@ -148,6 +160,12 @@ well-tuned ceiling for 70B on H200.
 | BF16 + compile + FP8 | **63.4%** | **627** | **1,396** | 89 GB |
 
 ## Scaling guidance for 512 H100s
+
+The PoC was measured on H200s, but the per-GPU throughput numbers transfer
+directly to the customer's H100s: both share the same 989 TFLOPS BF16 dense
+peak and the same NVLink-plus-InfiniBand topology. The H200 only adds memory
+headroom (141 GB vs 80 GB), which affects how much the per-GPU batch can grow,
+not how fast each GPU computes.
 
 The strategy selection does not change as the cluster grows. FSDP FULL with
 `dp_shard=512` remains the simplest and most efficient option up to roughly
@@ -162,6 +180,25 @@ inexpensive send-recv operations, and FSDP shards whatever state remains
 across the data-parallel dimension. Switching between any of these layouts is
 a one-line CLI change in TorchTitan and requires no modifications to the
 training code.
+
+### Wall-clock for a 70B run
+
+The table below converts the measured 70B FSDP FULL throughput numbers into
+training-time estimates for a one-trillion-token run, both on the PoC cluster
+and at the customer's eventual 512-GPU scale.
+
+| Cluster | Config | tok/s aggregate | 1T tokens |
+|---|---|---|---|
+| 16 H200 (PoC) | BF16 baseline (40.2%) | 14,176 | ~820 days (~2.2 yr) |
+| 16 H200 (PoC) | compile+FP8 (63.4%) | 22,336 | ~520 days (~17 mo) |
+| 512 H100 | BF16, linear scaling | 453,632 | ~25 days |
+| 512 H100 | compile+FP8, linear scaling | 714,752 | ~16 days |
+| 512 H100 | compile+FP8, 75% scaling | ~536,000 | ~22 days |
+
+In practice, a 512-GPU job rarely reaches linear scaling because of cross-rail
+InfiniBand contention; planning around the 75%-efficiency row is more
+realistic. **The 512-GPU reservation is right-sized for fine-tuning,
+continued-pretraining, or training a 70B–200B model from scratch.**
 
 ### Does 512 H100s comfortably handle a 405B-class model?
 
