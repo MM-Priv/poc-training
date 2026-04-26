@@ -66,9 +66,6 @@ def parse_torchtitan_log(log_path: Path) -> list[dict]:
 
 
 def parse_raw_ddp_log(log_path: Path, num_params: int) -> list[dict]:
-    """MFU recomputed against 989 TFLOPS dense BF16 peak so raw-DDP numbers
-    compare directly with TorchTitan's (which also uses 989 TFLOPS)."""
-    peak = 989e12
     rows = []
     for raw in log_path.read_text(errors="ignore").splitlines():
         line = ANSI.sub("", raw)
@@ -76,22 +73,20 @@ def parse_raw_ddp_log(log_path: Path, num_params: int) -> list[dict]:
         if not m:
             continue
         tps = int(m.group(4))
-        # Activation checkpointing → 8× flops per token (one extra forward recompute).
+        # 8N flops/token includes the activation-checkpoint forward recompute.
         achieved_tflops = tps * 8 * num_params / 1e12
-        mfu = achieved_tflops * 1e12 / peak * 100.0
         rows.append(dict(
             step=int(m.group(1)),
             loss=float(m.group(2)),
-            tps_total_k=float(m.group(3)),
             tps_per_gpu=tps,
             tflops_per_gpu=round(achieved_tflops, 2),
-            mfu_pct=round(mfu, 2),
+            mfu_pct=float(m.group(5)),
             memory_gib=float(m.group(6)),
         ))
     return rows
 
 
-def summarize(steps: list[dict], meta: dict | None = None, world_size: int = 16) -> dict:
+def summarize(steps: list[dict]) -> dict:
     if not steps:
         return {"completed": False, "n_steps": 0}
     peak_mem = max(s.get("memory_gib", 0.0) for s in steps)
@@ -150,7 +145,7 @@ def process_run(run_dir: Path) -> dict | None:
     else:
         steps = []
 
-    result = {**meta, "steps": steps, "summary": summarize(steps, meta)}
+    result = {**meta, "steps": steps, "summary": summarize(steps)}
     (run_dir / "result.json").write_text(json.dumps(result, indent=2))
     return result
 

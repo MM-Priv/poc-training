@@ -18,4 +18,4 @@ exp4b_fsdp_hybrid_70b,70B,"FSDP HYBRID_SHARD (shard within node, replicate acros
 exp4c_fsdp_sgo,8B,"FSDP SHARD_GRAD_OP (ZeRO-2, reshard_after_forward=never)",237,38.9,33.88,384.77,7475.0,True
 exp4c_fsdp_sgo,8B,"FSDP SHARD_GRAD_OP (ZeRO-2, reshard_after_forward=never)",249,44.55,54.9,440.54,8559.0,True
 exp4c_fsdp_sgo_70b,70B,"FSDP SHARD_GRAD_OP (ZeRO-2, reshard_after_forward=never)",242,,,,,False
-exp1_ddp,8B,"DDP (raw PyTorch, train.py)",232,47.96,83.7,474.35,7906.0,True
+exp1_ddp,8B,"DDP (raw PyTorch, train.py)",232,48.0,83.7,474.35,7906.0,True

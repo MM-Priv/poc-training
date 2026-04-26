@@ -9,6 +9,8 @@ training/results/exp_ddp_<SLURM_JOB_ID>/.
 import argparse
 import contextlib
 import datetime
+import json
+import math
 import os
 import time
 from functools import partial
@@ -133,7 +135,6 @@ def train():
     if is_rank0:
         size_b = num_params / 1e9
         logger.info(f"Strategy: ddp  |  Model: {size_b:.1f}B params  |  world_size={world_size}")
-        import json
         run_config = dict(
             strategy="ddp", world_size=world_size,
             model_params_B=round(size_b, 2),
@@ -249,7 +250,6 @@ def train():
         loss_val      = loss_accum.item()
 
         if step % log_interval == 0 and is_rank0:
-            import math
             logger.info(
                 f"step={step:>5d}/{total_steps}  loss={loss_val:.4f}  "
                 f"ppl={math.exp(min(loss_val, 20)):.1f}  lr={lr:.2e}  "
@@ -272,7 +272,6 @@ def train():
         if step % val_interval == 0:
             val_loss = evaluate(model, val_loader, local_rank)
             if is_rank0:
-                import math
                 logger.info(f"[VAL] step={step}  val_loss={val_loss:.4f}  ppl={math.exp(min(val_loss, 20)):.1f}")
                 metrics.write(step, val_loss=val_loss, val_perplexity=math.exp(min(val_loss, 20)))
 
@@ -280,7 +279,8 @@ def train():
             save_checkpoint(ckpt_dir, model, optimizer, scheduler, step, rank)
             logger.info(f"Checkpoint saved at step {step}")
 
-    if save_ckpts:
+    # Final checkpoint if the loop didn't already land on a ckpt_interval boundary.
+    if save_ckpts and step % ckpt_interval != 0:
         save_checkpoint(ckpt_dir, model, optimizer, scheduler, step, rank)
 
     if is_rank0:

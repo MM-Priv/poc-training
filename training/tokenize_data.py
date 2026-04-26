@@ -118,14 +118,15 @@ def tokenize_and_write(dataset, tokenizer, out_dir: Path, limit_docs: int | None
     train_size = total_tokens - val_size
     print(f"Split → train={train_size/1e9:.2f}B  val={val_size/1e6:.0f}M tokens")
 
+    # Stream-copy to avoid materialising the 40 GB train slice in RAM.
     all_data = np.memmap(tmp_path, dtype=np.uint32, mode="r")
     for path, start, end in [
         (train_path, 0,          train_size),
         (val_path,   train_size, total_tokens),
     ]:
-        chunk = np.array(all_data[start:end], dtype=np.uint32)
-        chunk.tofile(path)
-        print(f"  {path.name}  {len(chunk):,} tokens  {chunk.nbytes/1e9:.2f} GB")
+        all_data[start:end].tofile(path)
+        n = end - start
+        print(f"  {path.name}  {n:,} tokens  {n * 4 / 1e9:.2f} GB")
 
     tmp_path.unlink()
     return n_docs, train_size, val_size
