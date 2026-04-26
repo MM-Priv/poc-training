@@ -101,16 +101,12 @@ def summarize(steps: list[dict], meta: dict | None = None, world_size: int = 16)
                    if "tflops_per_gpu" in bulk[0] else 0.0)
 
     # Measured tok/s/GPU.
-    # - Raw DDP: train.py already logs tps_per_gpu directly (wall-clock measured).
-    # - TorchTitan: logged `tps` is per DP rank. Convert via known parallelism:
-    #   tps_per_gpu = tps_logged * (dp_replicate * dp_shard) / world_size
+    # Raw DDP logs `tps_per_gpu` directly; TorchTitan logs `tps`, which is already
+    # per-GPU (verified against MFU × peak_TFLOPS / FLOPs_per_token across layouts).
     if "tps_per_gpu" in bulk[0]:
         mean_tps_per_gpu = sum(s["tps_per_gpu"] for s in bulk) / len(bulk)
-    elif meta and "tps" in bulk[0]:
-        p = meta.get("parallelism", {})
-        dp_world = p.get("dp_replicate", 1) * max(p.get("dp_shard", 1), 1)
-        scale = dp_world / world_size
-        mean_tps_per_gpu = sum(s["tps"] for s in bulk) / len(bulk) * scale
+    elif "tps" in bulk[0]:
+        mean_tps_per_gpu = sum(s["tps"] for s in bulk) / len(bulk)
     else:
         mean_tps_per_gpu = 0.0
     return {

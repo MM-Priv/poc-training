@@ -82,31 +82,25 @@ cases that don't benefit from larger batches.
 | 4c | FSDP SGO | 38.9% | **44.6%** | 54.9 GB (bs=4) | **8,559** (bs=4) |
 | 4a | FSDP FULL | 36.6% | 43.7% | 42.2 GB (bs=4) | 8,399 (bs=4) |
 | 4b | FSDP HYBRID | 36.4% | 43.6% | 53.7 GB (bs=4) | 8,370 (bs=4) |
-| 2 | TP | 4.6% | — | 10.5 GB (bs=1) | 111 (bs=1) |
-| 3 | TP + PP | 1.9% | — | 9.6 GB (bs=1) | 22 (bs=1) |
+| 2 | TP | 4.6% | — | 10.5 GB (bs=1) | 886 (bs=1) |
+| 3 | TP + PP | 1.9% | — | 9.6 GB (bs=1) | 357 (bs=1) |
 
 ### 70B — memory pressure exposes strategy limits
 
 | # | Strategy | Config | MFU | Mem/GPU | tok/s/GPU | Outcome |
 |---|---|---|---|---|---|---|
 | **4a** | **FSDP FULL** | bs=1 | **40.2%** | 90.9 GB | **886** | ✅ |
-| 2 | TP | bs=1 | 16.3% | 71.6 GB | 45 | ✅ |
-| 2 | TP | bs=4 | **31.0%** | 77.2 GB | **85** | ✅ bs=4 nearly doubles MFU |
-| 3 | TP + PP | μb=2 | 2.2% | 69.9 GB | 3 | ⚠️ bubble-limited |
-| 3 | TP + PP | μb=8 | 2.9% | 70.1 GB | 4 | ⚠️ marginal gain over μb=2 |
+| 2 | TP | bs=1 | 16.3% | 71.6 GB | 358 | ✅ |
+| 2 | TP | bs=4 | **31.0%** | 77.2 GB | **683** | ✅ bs=4 nearly doubles MFU |
+| 3 | TP + PP | μb=2 | 2.2% | 69.9 GB | 49 | ⚠️ bubble-limited |
+| 3 | TP + PP | μb=8 | 2.9% | 70.1 GB | 65 | ⚠️ marginal gain over μb=2 |
 | 4b | FSDP HYBRID | bs=1 | 14.6%* | 137.4 GB peak | 321* | ❌ OOM mid-run |
 | 4c | FSDP SGO | bs=1 | — | — | — | ❌ OOM at init |
 | 1 | DDP | bs=1 | — | — | — | ❌ N/A (140 GB params alone) |
-| **4a** | **FSDP + compile + FP8** | bs=1 | **63.4%** | 89.3 GB | **1,396** | ✅ tuned ceiling |
+| **4a+** | **FSDP FULL + compile + FP8** | bs=1 | **63.4%** | 89.3 GB | **1,396** | ✅ tuned ceiling |
 
 \* HYBRID values are partial-run figures captured before the OOM and are not
 directly comparable to the other rows.
-
-A note on the TP and TP+PP rows: with one model replica spanning all 16 GPUs,
-TorchTitan reports `tok/s/GPU` as the aggregate throughput divided across
-those 16 replica members rather than as a per-GPU compute figure. The MFU
-column is the standard per-GPU number and is the more reliable cross-strategy
-comparison.
 
 ## Interpretation
 
@@ -144,31 +138,14 @@ parallelism is unavoidable (200B+) and to plan for schedule tuning on top.
 70B FSDP FULL, this is a 1.58× throughput improvement over the BF16 baseline
 (398 → 627 TFLOPS/GPU, 886 → 1,396 tok/s/GPU) — and at *lower* per-GPU memory,
 because FP8 weights are smaller. The number sits above TorchTitan's published
-reference of ~54% (Together AI, 64×H100, BF16) and is at the well-tuned
-ceiling for 70B on H200.
+reference of 54.5% MFU (Llama 3 70B on 64 H100s, BF16; see [TorchTitan
+paper, arXiv:2410.06511](https://arxiv.org/abs/2410.06511)) and is at the
+well-tuned ceiling for 70B on H200.
 
 | Config | MFU | TFLOPS/GPU | tok/s/GPU | Mem/GPU |
 |---|---|---|---|---|
 | BF16 baseline | 40.2% | 398 | 886 | 91 GB |
 | BF16 + compile + FP8 | **63.4%** | **627** | **1,396** | 89 GB |
-
-## Wall-clock for 1T tokens (70B FSDP FULL)
-
-The table below converts the measured throughput numbers into training-time
-estimates for a one-trillion-token run, both on the PoC cluster and at the
-customer's eventual 512 H100 scale.
-
-| Cluster | Config | tok/s aggregate | 1T tokens |
-|---|---|---|---|
-| 16 H200 (PoC) | BF16 baseline (40.2%) | 14,176 | ~820 days (~2.2 yr) |
-| 16 H200 (PoC) | compile+FP8 (63.4%) | 22,336 | ~520 days (~17 mo) |
-| 512 H100 | BF16, linear scaling | 453,632 | ~25 days |
-| 512 H100 | compile+FP8, linear scaling | 714,752 | ~16 days |
-| 512 H100 | compile+FP8, 75% scaling | ~536,000 | ~22 days |
-
-In practice, a 512-GPU job rarely reaches linear scaling because of cross-rail
-InfiniBand contention; planning around the 70–80% efficiency row is more
-realistic.
 
 ## Scaling guidance for 512 H100s
 
@@ -204,14 +181,11 @@ H100s is roughly 320 PFLOPS. For 405B at Llama-3.1 token budgets:
 | 3T | ~10.5 months |
 | 15T (Llama-3.1-class full pretraining) | ~3.8 years (impractical) |
 
-A full 15T-token pretraining of a 405B-class model requires thousands of GPUs
-— Meta used roughly 16,000 H100s for two months for exactly this reason. If
-the customer's product needs a 405B base model, the realistic path on 512
-GPUs is LoRA or QLoRA fine-tuning of an open-weights checkpoint, which fits
+A full 15T-token pretraining of a 405B-class model requires thousands of GPUs —
+Meta used roughly 16,000 H100s for two months for exactly this reason. If the
+customer's product needs a model in the order of 405B, the realistic path on
+512 GPUs is LoRA or QLoRA fine-tuning of an open-weights checkpoint, which fits
 even on 16 GPUs.
-
-The takeaway is that the 512-GPU reservation is right-sized for fine-tuning,
-continued-pretraining, or training a 70B–200B model from scratch.
 
 ## Operational readiness
 
