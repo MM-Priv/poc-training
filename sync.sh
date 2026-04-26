@@ -9,6 +9,9 @@ if [ "${1:-}" = "fetch" ]; then
         for subdir in logs results; do
             mkdir -p "$LOCAL_ROOT/$dir/$subdir"
             rsync -avz \
+              --exclude 'checkpoints/' \
+              --exclude 'checkpoint/' \
+              --exclude 'comm_traces/' \
               -e "ssh -i $KEY" \
               "$REMOTE:$REMOTE_ROOT/$dir/$subdir/" "$LOCAL_ROOT/$dir/$subdir/" 2>/dev/null || true
         done
@@ -25,6 +28,9 @@ else
       --exclude '.claude' \
       --exclude '.envrc' \
       --exclude 'data/' \
+      --exclude 'checkpoints/' \
+      --exclude 'checkpoint/' \
+      --exclude 'comm_traces/' \
       -e "ssh -i $KEY" \
       "$LOCAL_ROOT/" "$REMOTE:$REMOTE_ROOT/"
 fi
