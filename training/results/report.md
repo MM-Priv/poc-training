@@ -4,44 +4,41 @@
 
 We set up an end-to-end, multi-node pre-training stack on a 2-node × 8×H200
 Nebius cluster and ran Llama 3.1 (8B and 70B) under six distribution
-strategies each. The goal was to answer three questions for the client:
+strategies. Three findings stand out:
 
-1. **Can we run multi-node LLM training on this platform with reasonable
-   efficiency?** Yes. **63% MFU measured** for 70B FSDP FULL with
-   torch.compile + FP8 (1,396 tok/s/GPU, 89 GB/GPU). Baseline BF16-only run
-   gives 40% MFU — the gap is the "production optimization headroom" on the
-   same hardware.
-2. **What should the client's initial setup look like on 512 H100s?**
-   The *strategy* recommendation is framework-agnostic: FSDP FULL for
-   anything up to ~200B; TP + PP composed on top for 200B+. The choice of
-   *training framework* is the client's — any of the major options (HF
-   Accelerate, DeepSpeed, Megatron-Core/NeMo, raw PyTorch, TorchTitan) can
-   realize these strategies. We picked TorchTitan for the PoC because it
-   made switching between all six strategies a one-line CLI change,
-   minimizing PoC engineering. The trade-offs that would motivate a
-   different choice are mostly about model architecture — notably, custom
-   non-Llama architectures may be better served by Megatron-Core.
-3. **Which strategies scale to 100B+?** Of the six tested, **FSDP FULL_SHARD**
-   is the safest default; **TP=8 × PP=2 × FSDP-DP** is the growth path when
-   the model outgrows FSDP alone.
+1. **The platform delivers production-grade efficiency.** With `torch.compile`
+   and FP8 enabled, 70B FSDP FULL reaches **63.4% MFU** (Model FLOPs
+   Utilization) at 1,396 tok/s/GPU. The plain BF16 baseline lands at 40.2% MFU,
+   so the gap between the two represents the software-optimization headroom
+   available on the same hardware.
+2. **DDP is the highest-MFU choice as long as the model fits per-GPU.** At 8B
+   it reaches 48% MFU and beats every FSDP variant we measured. FSDP only
+   pays off when memory forces it. At 70B, FSDP FULL_SHARD is the workhorse;
+   HYBRID and SGO need shard groups too large for a 2-node topology.
+3. **For models above 100B parameters, the growth path is `TP=8 × PP=N ×
+   FSDP-DP`.** Tensor parallelism stays intra-node over NVLink, pipeline
+   parallelism ships activations cheaply across InfiniBand, and FSDP shards
+   whatever state is left.
+
+The choice of training framework is independent of the strategy. We used
+TorchTitan because it exposes all six strategies as CLI flags on a single
+launcher, which minimised PoC engineering. The same numbers are reachable from
+HF Accelerate, DeepSpeed, Megatron-Core / NeMo, or raw PyTorch — they are
+properties of the hardware and the strategy, not of TorchTitan.
 
 ## What was built
 
-A 2-node × 8-GPU Nebius H200 cluster (soperator SLURM, NVLink intra-node,
-InfiniBand inter-node) running:
+The cluster is a 2-node × 8-GPU H200 system running soperator Slurm, with
+NVLink intra-node and InfiniBand inter-node. The pre-training stack consists
+of:
 
-- **Data pipeline** — FineWeb-Edu (10BT sample) downloaded + tokenized to
-  uint32 binaries with the Llama 3.1 tokenizer (9.6B train / 100M val tokens).
-- **Training framework** — TorchTitan (chosen for the PoC because it
-  exposes all six parallelism strategies as CLI flags on one launcher, so
-  the PoC itself could be built with minimal per-strategy engineering).
-  The client is free to use any framework that supports the same
-  strategies — the measured results here are properties of the *hardware
-  and strategy*, not of TorchTitan specifically. A ~15-line launcher
-  (`training/titan_launcher.py`) registers the local HF cache as a
-  TorchTitan dataset.
-- **Six strategies**, each a thin sbatch wrapper that overrides
-  `--parallelism.*` CLI flags:
+- **A data pipeline** that downloads the FineWeb-Edu 10BT sample and tokenises
+  it with the Llama 3.1 tokenizer into uint32 binaries (9.6B train and 100M
+  validation tokens).
+- **Six distribution strategies**, each implemented as a thin sbatch wrapper.
+  Five run via TorchTitan with overridden `--parallelism.*` CLI flags;
+  experiment 1 (DDP) uses a raw-PyTorch reference loop in `training/train.py`
+  so the customer has a minimal example without a framework dependency.
 
 | # | Strategy | Parallelism config |
 |---|---|---|
@@ -52,164 +49,154 @@ InfiniBand inter-node) running:
 | 4b | FSDP HYBRID_SHARD | dp_replicate=2, dp_shard=8 |
 | 4c | FSDP SHARD_GRAD_OP (ZeRO-2) | dp_shard=16, reshard_after_forward=never |
 
-Plus a resume-flag validation job (`test_resume.sbatch`) that verifies
-checkpoint/restart works correctly, and a toy-transformer smoke test
-(`smoke_test.sbatch`) for cluster bring-up.
+Two further sbatch jobs validate the cluster itself: `smoke_test.sbatch` is a
+toy-transformer NCCL bring-up, and `test_resume.sbatch` verifies that
+checkpoint and resume round-trip correctly.
 
-Supporting tooling:
-- `training/collect_results.py` — parses training logs into per-run
-  `result.json` and aggregate `summary.{json,csv}`
-- Ephemeral-storage caches configured (`TRITON_CACHE_DIR` etc.) on `/tmp`
-  to avoid concurrent-write conflicts on the shared filesystem
-- `setup.sh` stages the Llama 3.1 tokenizer to a shared asset path and
-  installs all deps via `uv sync`
+Supporting tooling: `collect_results.py` parses per-run logs into a
+`result.json` per run plus an aggregate `summary.{json,csv}`. Compiler and
+kernel caches (`TRITON_CACHE_DIR`, `TORCH_EXTENSIONS_DIR`,
+`PYTORCH_KERNEL_CACHE_PATH`, `CUDA_CACHE_PATH`) are pinned to node-local
+`/tmp` to avoid concurrent-write conflicts on the shared filesystem. The
+top-level `setup.sh` stages the Llama 3.1 tokenizer to a shared asset path
+and installs all dependencies via `uv sync`.
 
 ## Measured training efficiency
 
-MFU is computed against H200's **989 TFLOPS BF16 dense peak** (the
-no-sparsity figure that applies to real training). All runs use full
-activation checkpointing, BF16 mixed precision, seq_len=4096, and 50 steps
-after ~12-step warmup.
+MFU is computed against H200's 989 TFLOPS BF16 dense peak (the no-sparsity
+figure that applies to real training). All runs use full activation
+checkpointing, BF16 mixed precision, sequence length 4096, and 50 measured
+steps after a ~12-step warmup.
 
-### 8B (Llama 3.1 8B, all strategies fit)
+### 8B — every strategy fits per-GPU
 
-Each FSDP variant measured at two batch sizes: `local_batch=1` (initial
-fair-comparison baseline) and `local_batch=4` (matmul-friendly configuration
-that exploits the ample memory headroom at 8B).
+We measured each FSDP variant at two batch sizes: `local_batch=1` provides a
+fair cross-strategy baseline, and `local_batch=4` exploits the spare memory
+that 8B leaves on an H200. DDP, TP, and TP+PP were measured only at bs=1: DDP
+already saturates compute at bs=1, and TP / TP+PP at 8B are bandwidth-floor
+cases that don't benefit from larger batches.
 
-| # | Strategy | MFU @ bs=1 | MFU @ bs=4 | Peak Mem @ bs=4 | tok/s/GPU @ bs=4 |
+| # | Strategy | MFU bs=1 | MFU bs=4 | Mem (config) | tok/s/GPU (config) |
 |---|---|---|---|---|---|
-| 1 | DDP | 48.0% | — | 83.7 GB | 7,906 |
-| 4c | FSDP SGO (ZeRO-2) | 38.9% | **44.6%** | 54.9 GB | **8,559** |
-| 4a | FSDP FULL (ZeRO-3) | 36.6% | 43.7% | 42.2 GB | 8,399 |
-| 4b | FSDP HYBRID | 36.4% | 43.6% | 53.7 GB | 8,370 |
-| 2 | Tensor Parallel | 4.6% | — | 10.5 GB | 111 |
-| 3 | TP + PP | 1.9% | — | 9.6 GB | 22 |
+| 1 | DDP | **48.0%** | — | 83.7 GB (bs=1) | 7,906 (bs=1) |
+| 4c | FSDP SGO | 38.9% | **44.6%** | 54.9 GB (bs=4) | **8,559** (bs=4) |
+| 4a | FSDP FULL | 36.6% | 43.7% | 42.2 GB (bs=4) | 8,399 (bs=4) |
+| 4b | FSDP HYBRID | 36.4% | 43.6% | 53.7 GB (bs=4) | 8,370 (bs=4) |
+| 2 | TP | 4.6% | — | 10.5 GB (bs=1) | 111 (bs=1) |
+| 3 | TP + PP | 1.9% | — | 9.6 GB (bs=1) | 22 (bs=1) |
 
-### 70B (Llama 3.1 70B, memory pressure exposes strategy limits)
+### 70B — memory pressure exposes strategy limits
 
-| # | Strategy | Config | MFU | Peak Mem/GPU | tok/s/GPU | Outcome |
+| # | Strategy | Config | MFU | Mem/GPU | tok/s/GPU | Outcome |
 |---|---|---|---|---|---|---|
 | **4a** | **FSDP FULL** | bs=1 | **40.2%** | 90.9 GB | **886** | ✅ |
-| 2 | Tensor Parallel | bs=1 | 16.3% | 71.6 GB | 45 | ✅ |
-| 2 | Tensor Parallel | **bs=4** | **31.0%** | 77.2 GB | **85** | ✅ **bs=4 nearly doubles MFU** |
-| 3 | TP + PP | μbatches=2 | 2.2% | 69.9 GB | 3 | ✅ |
-| 3 | TP + PP | μbatches=8 | 2.9% | 70.1 GB | 4 | ✅ marginal gain |
-| 4b | FSDP HYBRID | bs=1 | (14.6%) | 137.4 GB peak | 321 | ⚠️ OOM mid-run |
+| 2 | TP | bs=1 | 16.3% | 71.6 GB | 45 | ✅ |
+| 2 | TP | bs=4 | **31.0%** | 77.2 GB | **85** | ✅ bs=4 nearly doubles MFU |
+| 3 | TP + PP | μb=2 | 2.2% | 69.9 GB | 3 | ⚠️ bubble-limited |
+| 3 | TP + PP | μb=8 | 2.9% | 70.1 GB | 4 | ⚠️ marginal gain over μb=2 |
+| 4b | FSDP HYBRID | bs=1 | 14.6%* | 137.4 GB peak | 321* | ❌ OOM mid-run |
 | 4c | FSDP SGO | bs=1 | — | — | — | ❌ OOM at init |
-| 1 | DDP | bs=1 | — | — | — | ❌ N/A (140 GB params alone exceed budget) |
-| **4a** | **FSDP + compile + FP8** | bs=1 | **63.4%** | 89.3 GB | **1,396** | ✅ **production-grade ceiling** |
+| 1 | DDP | bs=1 | — | — | — | ❌ N/A (140 GB params alone) |
+| **4a** | **FSDP + compile + FP8** | bs=1 | **63.4%** | 89.3 GB | **1,396** | ✅ tuned ceiling |
+
+\* HYBRID values are partial-run figures captured before the OOM and are not
+directly comparable to the other rows.
+
+A note on the TP and TP+PP rows: with one model replica spanning all 16 GPUs,
+TorchTitan reports `tok/s/GPU` as the aggregate throughput divided across
+those 16 replica members rather than as a per-GPU compute figure. The MFU
+column is the standard per-GPU number and is the more reliable cross-strategy
+comparison.
 
 ## Interpretation
 
-Each strategy has hyperparameters (batch size, microbatch count) that must
-be sized to the cluster and the model. Per-strategy MFU numbers are only
-meaningful once those are set sensibly — the bs=1 baselines in the table
-are fair for cross-strategy comparison, but correspond to *naively default*
-settings rather than production configurations.
+Per-strategy MFU only becomes meaningful once the batch size and microbatch
+count have been sized to the cluster. The bs=1 numbers are fair for
+cross-strategy comparison, but they correspond to default settings rather
+than to a production configuration.
 
-**Memory wall at 70B.** DDP at 70B is infeasible (140 GB BF16 params alone
-exceed an H200). At 8B it's the fastest option (48% MFU) because the full
-model fits per-GPU and comms are one all-reduce per step. This is the
-central reason to use sharded strategies at 70B+.
+**The memory wall at 70B.** Running DDP at 70B is infeasible because 140 GB
+of BF16 parameters alone already exceed an H200. At 8B, DDP is the fastest
+option (48% MFU) because the full model fits per-GPU and PyTorch's gradient
+all-reduce is overlapped with backward. Above 8B, sharded strategies become
+mandatory.
 
-**FSDP FULL_SHARD is the workhorse for 70B.** 40% MFU, 91 GB/GPU, within
-TorchTitan's published 33–42% range. It's the only FSDP variant that
-survives at 70B on our 2-node topology — HYBRID's 8-way shard group leaves
-too much state per GPU (OOM), and SGO keeps params gathered after forward
-(the full 140 GB). Both failure modes are pure memory arithmetic, not
-runtime surprises.
+**FSDP FULL_SHARD is the workhorse for 70B.** It delivers 40% MFU at 91 GB/GPU
+and is the only FSDP variant that survives at 70B on our 2-node topology.
+FSDP HYBRID's 8-way shard group leaves too much state on each GPU; FSDP SGO
+keeps parameters gathered after the forward pass and never frees the full
+140 GB. Both failures are pure memory arithmetic, not runtime surprises.
 
-**TP and TP+PP at 8B look underwhelming (4.6% and 1.9% MFU) because they're
-designed for bigger models and bigger batches.** At 70B with the right
-configuration (`local_batch_size=4`) TP-alone reaches **31% MFU** — in the
-same league as FSDP FULL. With `local_batch_size=1` TP would give 16% —
-that's not a property of the strategy, it's a mis-set hyperparameter. The
-rule of thumb: TP's per-layer collectives are amortized across the batch,
-so the batch must grow to keep them in the background of compute.
+**TP and TP+PP look weak at 8B (4.6% and 1.9% MFU) because they are designed
+for bigger models and bigger batches.** At 70B with `local_batch_size=4`,
+TP-alone reaches 31% MFU — comparable to FSDP FULL. The rule of thumb is that
+TP's per-layer collectives are amortised across the batch, so the batch must
+grow large enough to keep them hidden behind compute.
 
-**TP+PP is bubble-limited with the default TorchTitan 1F1B schedule.**
-Going from 2 → 8 microbatches only moved MFU 2.2% → 2.9%. Realizing the
-theoretical bubble reduction needs interleaved or zero-bubble schedules,
-which are experimental. For the client the practical takeaway is: use
-TP+PP when PP is unavoidable (200B+) and plan to tune the schedule on top
-of TorchTitan's default.
+**TP+PP is bubble-limited under TorchTitan's default 1F1B schedule.**
+Increasing the number of microbatches from 2 to 8 only moved MFU from 2.2% to
+2.9%. Realising the theoretical bubble reduction requires interleaved or
+zero-bubble schedules, which are still experimental in TorchTitan. The
+practical recommendation for the customer is to use TP+PP only when pipeline
+parallelism is unavoidable (200B+) and to plan for schedule tuning on top.
 
-**torch.compile + FP8 is the production ceiling: 63% MFU on 70B FSDP FULL.**
-That's a 1.58× throughput improvement over the BF16 baseline (398 → 627
-TFLOPS/GPU, 886 → 1,396 tok/s/GPU) with *lower* per-GPU memory because FP8
-weights are smaller. 63% MFU is above TorchTitan's published 54% (Together
-AI, 64×H100, BF16) and at the current practical ceiling for 70B on H200.
+**`torch.compile` together with FP8 is the tuned ceiling.** At 63.4% MFU on
+70B FSDP FULL, this is a 1.58× throughput improvement over the BF16 baseline
+(398 → 627 TFLOPS/GPU, 886 → 1,396 tok/s/GPU) — and at *lower* per-GPU memory,
+because FP8 weights are smaller. The number sits above TorchTitan's published
+reference of ~54% (Together AI, 64×H100, BF16) and is at the well-tuned
+ceiling for 70B on H200.
 
 | Config | MFU | TFLOPS/GPU | tok/s/GPU | Mem/GPU |
 |---|---|---|---|---|
 | BF16 baseline | 40.2% | 398 | 886 | 91 GB |
 | BF16 + compile + FP8 | **63.4%** | **627** | **1,396** | 89 GB |
 
-### tok/s/GPU as the practical budgeting metric
+## Wall-clock for 1T tokens (70B FSDP FULL)
 
-tok/s/GPU maps directly to training-time and cost.
+The table below converts the measured throughput numbers into training-time
+estimates for a one-trillion-token run, both on the PoC cluster and at the
+customer's eventual 512 H100 scale.
 
-**Baseline (bs=1, no compile/FP8)** — our measured 70B FSDP FULL:
+| Cluster | Config | tok/s aggregate | 1T tokens |
+|---|---|---|---|
+| 16 H200 (PoC) | BF16 baseline (40.2%) | 14,176 | ~820 days (~2.2 yr) |
+| 16 H200 (PoC) | compile+FP8 (63.4%) | 22,336 | ~520 days (~17 mo) |
+| 512 H100 | BF16, linear scaling | 453,632 | ~25 days |
+| 512 H100 | compile+FP8, linear scaling | 714,752 | ~16 days |
+| 512 H100 | compile+FP8, 75% scaling | ~536,000 | ~22 days |
 
-- 886 tok/s/GPU × 16 GPUs = 14,176 tok/s total
-- 1T tokens → **~820 hours (~34 days)** on 16 H200s
-- Linear-scaled to 512 H100s: ~25 days for 1T tokens. Real efficiency at
-  512 GPUs is typically 70–80% of linear due to cross-rail InfiniBand
-  contention — budget accordingly.
+In practice, a 512-GPU job rarely reaches linear scaling because of cross-rail
+InfiniBand contention; planning around the 70–80% efficiency row is more
+realistic.
 
-**Measured production ceiling (bs=1, compile+FP8, 63% MFU)** — now verified
-on-cluster, not projected:
+## Scaling guidance for 512 H100s
 
-- **1,396 tok/s/GPU × 16 GPUs = 22,336 tok/s total**
-- 1T tokens → **~12.5 days** on 16 H200s
-- Linear-scaled to 512 H100s: **~9.5 days** for 1T tokens (at ~75% scaling
-  efficiency: ~12.5 days)
+The strategy selection does not change as the cluster grows. FSDP FULL with
+`dp_shard=512` remains the simplest and most efficient option up to roughly
+200B parameters. HSDP only starts to pay off when each shard group is large
+enough to hold a full optimizer-state copy — for a Llama 70B that means at
+least 16 GPUs per shard group, which corresponds to ≥2 nodes with
+topology-aware placement.
 
-The 1.58× throughput gap between BF16 baseline and compile+FP8 ceiling is
-the "software optimization budget" that compile + `torchao` float8 provide
-on the same hardware.
+Above 200B parameters the canonical layout becomes `TP=8 × PP=N × FSDP-DP`.
+TP=8 stays inside one node over NVLink, PP ships activations across IB in
+inexpensive send-recv operations, and FSDP shards whatever state remains
+across the data-parallel dimension. Switching between any of these layouts is
+a one-line CLI change in TorchTitan and requires no modifications to the
+training code.
 
-### What this means for scaling to 512 GPUs
+### Does 512 H100s comfortably handle a 405B-class model?
 
-The strategy selection doesn't change. At 512 H100s (64 nodes × 8):
+**Memory is not the constraint.** A 3D layout `TP=8 × PP=8 × FSDP-DP=8`
+shards a 405B model along with its gradients and FP32 AdamW state down to
+roughly 10 GB/GPU of resident state, which fits well within an 80 GB H100
+even before activation-checkpointing savings.
 
-- **FSDP FULL** with `dp_shard=512` remains the simplest and most efficient
-  option up to ~200B parameters. Cross-node all-gather/reduce-scatter
-  becomes more sensitive to IB topology — HSDP (shard within node, replicate
-  across) starts to pay off when each shard group holds a full copy of
-  optimizer state comfortably, which for Llama 70B means shard groups of 16+
-  GPUs (i.e. DGX systems with NVSwitch, or ≥2 nodes per shard group).
+**Wall-clock is the constraint.** At 63% MFU the aggregate throughput on 512
+H100s is roughly 320 PFLOPS. For 405B at Llama-3.1 token budgets:
 
-- **TP=8 × PP=N × FSDP-DP** becomes the canonical layout for 200B+ models.
-  TP=8 stays intra-node (NVLink); PP ships activations across IB in
-  send-recv (cheap relative to all-reduce); FSDP shards what's left across
-  the DP dimension.
-
-Both are one-line TOML + sbatch CLI changes in TorchTitan. No training-code
-modifications are required to switch between them.
-
-### Does the 512 H100 cluster comfortably handle a 405B-class model?
-
-**Yes, memory-wise — easily.** A typical 3D layout `TP=8 × PP=8 × FSDP-DP=8`
-puts each GPU at about `1/(8×8) = 1/64` of each layer's parameters, then
-FSDP-shards the remaining state 8-way within its pipeline stage. Static
-per-GPU state for Llama 3.1 405B in BF16 + FP32 AdamW comes out to **~10 GB
-of sharded params+grads+optimizer** — well within an 80 GB H100 budget even
-before activation-checkpointing savings. 405B fits with substantial headroom
-for longer sequences or bigger batches.
-
-**Training time is the realistic constraint, not memory.** Extrapolating
-the PoC's measured 63% MFU (with compile + FP8) to 512 H100s:
-
-- Aggregate throughput: 512 × ~625 TFLOPS = **~320 PFLOPS**
-- FLOPs required for 405B at 15T tokens (Llama 3.1 scale): 3.8 × 10²⁵ FLOPs
-- Wall-clock: **~3.5–4 years**. Meta used 16,000 H100s for ~2 months for
-  exactly this reason.
-
-For realistic **startup-scale training budgets**, the same cluster handles:
-
-| Target tokens | Wall-clock on 512 H100s (405B, 63% MFU) |
+| Target tokens | Wall-clock (405B, 63% MFU, 512 H100) |
 |---|---|
 | 100B (small continued-pretraining) | ~10 days |
 | 500B (substantial continued-pretraining) | ~50 days |
@@ -217,71 +204,64 @@ For realistic **startup-scale training budgets**, the same cluster handles:
 | 3T | ~10.5 months |
 | 15T (Llama-3.1-class full pretraining) | ~3.8 years (impractical) |
 
-**Takeaway:** the 512-GPU reservation is the right size for fine-tuning,
-continued-pretraining, or training a 70B–200B model from scratch. Full
-from-scratch pretraining of a 405B-class model on Llama's full token budget
-is not in scope for this cluster size — that class of run requires
-thousands of GPUs. If the client's product assumes a 405B base model, the
-realistic path is **LoRA/QLoRA fine-tuning** of an open-weights checkpoint
-(fits easily even on 16 GPUs; see operational breakdown in the main report).
+A full 15T-token pretraining of a 405B-class model requires thousands of GPUs
+— Meta used roughly 16,000 H100s for two months for exactly this reason. If
+the customer's product needs a 405B base model, the realistic path on 512
+GPUs is LoRA or QLoRA fine-tuning of an open-weights checkpoint, which fits
+even on 16 GPUs.
 
-## Operational readiness demonstrated
+The takeaway is that the 512-GPU reservation is right-sized for fine-tuning,
+continued-pretraining, or training a 70B–200B model from scratch.
+
+## Operational readiness
 
 Beyond the throughput numbers, the PoC validated four operational concerns
 that matter for a real training run:
 
 | Concern | What was demonstrated |
 |---|---|
-| **Multi-node NCCL health** | Smoke test passes (200 steps across 16 GPUs, 2 nodes over IB) |
-| **Checkpoint/resume** | `test_resume.sbatch` verifies phase-2 resumes from phase-1's step-10 checkpoint; loss continues cleanly |
-| **Data pipeline at scale** | 9.6B tokens pre-tokenized as uint32 `.bin`; `StatefulDataLoader` resumes mid-epoch |
-| **Deterministic failure modes** | Expected OOMs at 70B for HSDP and SGO were pre-flagged in sbatch comments; they failed *exactly* where and why predicted |
+| Multi-node NCCL health | Smoke test ran 200 steps across 16 GPUs and 2 nodes over IB |
+| Checkpoint and resume | `test_resume.sbatch` verifies that phase-2 picks up cleanly from phase-1's step-10 checkpoint and that the loss continues without a discontinuity |
+| Data pipeline at scale | 9.6B tokens were pre-tokenised as uint32 `.bin` files; TorchTitan's `StatefulDataLoader` resumes mid-epoch |
+| Deterministic failure modes | The 70B HYBRID and SGO OOMs were pre-flagged in sbatch comments and failed exactly where and why predicted |
 
-## Recommendations for the client's production setup
+## Recommendations for the customer's setup
 
-1. **Framework: client's choice.** The parallelism strategies measured here
-   are standard PyTorch primitives (FSDP, TP via `parallelize_module`, PP
-   via `torch.distributed.pipelining`) and work in any framework that
-   exposes them — HF Accelerate, DeepSpeed, Megatron-Core/NeMo, or direct
-   PyTorch. We used **TorchTitan** for the PoC because it let us flip
-   between all six strategies via CLI flags, which minimized PoC
-   engineering; but the client should pick the framework that best matches
-   their model architecture and team familiarity. Notably, TorchTitan is
-   Llama-optimized and needs integration work (~1 week) for custom
-   non-Llama decoder transformers, and more for exotic architectures where
-   Megatron-Core is the stronger fit.
+1. **Framework: customer's choice.** Every strategy measured here is built on
+   standard PyTorch primitives — FSDP, `parallelize_module`, and
+   `torch.distributed.pipelining` — so any framework that exposes them will
+   reach the same numbers. We picked TorchTitan to flip strategies via CLI
+   flags during the PoC; the customer should pick whatever best matches their
+   model architecture and team familiarity. TorchTitan is Llama-optimised and
+   needs roughly a week of integration work for custom non-Llama decoder
+   transformers; exotic architectures are often a better fit for
+   Megatron-Core.
+2. **Default strategy: FSDP FULL_SHARD.** A single knob, 40% MFU at 70B
+   (63% with compile and FP8), and it scales to any cluster size. Use this
+   unless the model outgrows it.
+3. **Growth path: `TP=8 × PP=N × FSDP-DP` for 200B+.** Keep TP=8 within a
+   node, and add pipeline parallelism only when per-GPU memory is exhausted
+   even with FSDP.
+4. **Storage layout.** Keep ephemeral compiler and kernel caches on
+   node-local `/tmp`, and put tokenised data, checkpoints, and TensorBoard
+   events on the shared filesystem. The `/mnt/data/poc-training/training/`
+   layout used here is directly transferable.
+5. **Observability.** Every run writes a `result.json` (config plus a metrics
+   summary), a `train.log` (per-step metrics), and TensorBoard events.
+   `collect_results.py` aggregates them into `summary.{json,csv}`, which is
+   ready to drop into an efficiency report.
 
-2. **Default strategy: FSDP FULL_SHARD (ZeRO-3)**. One knob, 40% MFU at 70B,
-   scales to any cluster size. Use this unless the model outgrows it.
-
-3. **Growth path: TP=8 × PP=N × FSDP-DP for 200B+**. Keep TP=8 within-node
-   over NVLink; add PP only when per-GPU memory is exhausted even with FSDP.
-
-4. **Avoid at 70B on 2-node topology:** FSDP HYBRID_SHARD (needs larger
-   shard groups), FSDP SHARD_GRAD_OP (keeps params gathered), DDP (fits
-   nothing past ~15B).
-
-5. **Storage layout:** ephemeral caches (`/tmp/*`) on node-local SSD for
-   compiler artifacts; shared filesystem for tokenized data, checkpoints,
-   and TensorBoard events. This PoC's `/mnt/data/poc-training/training/`
-   layout is directly transferable.
-
-6. **Observability:** every experiment writes `run_meta.json` (algorithm +
-   parallelism params), `train.log` (per-step metrics), and TensorBoard
-   events. `collect_results.py` aggregates into a single
-   `summary.{json,csv}` ready for the efficiency report.
-
-## Deliverables
+## Artifacts
 
 | Artifact | Location |
 |---|---|
-| Six sbatch files × 8B + 5 × 70B | `training/slurm/exp{1,2,3,4a,4b,4c}_*_{8b,70b}.sbatch` |
+| Sbatch files (6 × 8B + 5 × 70B + 3 variants `_bs4`/`_mb8`/`_fp8`) | `training/slurm/` |
 | TorchTitan launcher | `training/titan_launcher.py` |
 | Raw-PyTorch DDP reference | `training/train.py` |
-| Checkpoint resume validation | `training/slurm/test_resume.sbatch` |
-| Data prep scripts | `training/download_data.py`, `training/tokenize_data.py` |
+| Checkpoint-resume validation | `training/slurm/test_resume.sbatch` |
+| Data prep | `training/download_data.py`, `training/tokenize_data.py` |
 | Results aggregator | `training/collect_results.py` |
-| Per-run metrics | `training/results/<run>/result.json` |
-| Aggregate table | `training/results/summary.{json,csv}` |
+| Aggregate table (in repo) | `training/results/summary.{json,csv}` |
+| Per-run metrics (cluster only) | `/mnt/data/poc-training/training/results/<run>/result.json` |
 
-All runs reproducible via `bash sync.sh && ssh <cluster> 'sbatch <script>'`.
+Every run is reproducible via `bash sync.sh && ssh <cluster> 'sbatch <script>'`.
