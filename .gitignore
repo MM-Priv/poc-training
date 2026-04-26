@@ -22,3 +22,4 @@ wheels/
 cluster-validator/logs/
 cluster-validator/results/
 training/logs/
+training/results/*/
