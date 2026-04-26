@@ -21,3 +21,4 @@ wheels/
 # Runtime artifacts
 cluster-validator/logs/
 cluster-validator/results/
+training/logs/

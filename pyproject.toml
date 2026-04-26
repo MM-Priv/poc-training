@@ -1,0 +1,28 @@
+[project]
+name = "poc-training"
+version = "0.1.0"
+description = "Multi-node LLM training PoC on Nebius H200 cluster"
+requires-python = "==3.12.*"
+dependencies = [
+    # PyTorch
+    "torch",
+    "torchvision",
+    "torchaudio",
+    # HuggingFace ecosystem
+    "transformers",
+    "datasets",
+    "huggingface-hub",
+    "tokenizers",
+    "safetensors",
+    # Distributed training
+    "torchtitan",
+    "torchao",
+    # Data / utilities
+    "numpy",
+    "pyarrow",
+    "tqdm",
+    "tensorboard",
+    "pyyaml",
+]
+
+[tool.uv]
